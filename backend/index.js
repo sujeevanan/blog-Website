@@ -1,55 +1,161 @@
+// const express = require("express");
+// const app = express();
+// const cors = require("cors");
+// const mongoose = require("mongoose");
+// const User = require("./models/UserModel");
+// const bcrypt = require("bcryptjs");
+// const jwt = require("jsonwebtoken");
+// const port = 4000;
+// const secret = "1235w5westes6d65d6d6";
+// const cookieParser = require("cookie-parser");
+// const multer = require("multer");
+// const uploadMiddleware = multer({ dest: "uploads/" });
+
+// //to use the json data
+// app.use(express.json());
+
+// //coockie parser
+// app.use(cookieParser());
+
+// //salt
+// const salt = bcrypt.genSaltSync(10);
+
+// //use cors
+// app.use(
+//   cors({
+//     origin: "http://localhost:5173", // Only allow requests from your frontend
+//     credentials: true, // Allow cookies, authentication headers
+//   })
+// );
+
+// //mongoose connect
+// mongoose.connect(
+//   "mongodb+srv://blog:blog123@cluster0.2tbi5.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+//   //   () => {
+//   //     console.log("database connected succesfully");
+//   //   }
+// );
+
+// //test
+// app.post("/register", async (req, res) => {
+//   const { username, password } = req.body;
+//   try {
+//     const UserDoc = await User.create({
+//       username,
+//       password: bcrypt.hashSync(password, salt),
+//     });
+
+//     res.json(UserDoc);
+//   } catch (e) {
+//     res.status(400).json(e);
+//   }
+// });
+
+// //login
+// app.post("/login", async (req, res) => {
+//   const { username, password } = req.body;
+//   const userDoc = await User.findOne({ username });
+//   const passOk = bcrypt.compareSync(password, userDoc.password);
+//   if (passOk) {
+//     // logged in
+//     jwt.sign({ username, id: userDoc._id }, secret, {}, (err, token) => {
+//       if (err) throw err;
+//       res.cookie("token", token).json({
+//         id: userDoc._id,
+//         username,
+//       });
+//     });
+//   } else {
+//     res.status(400).json("wrong credentials");
+//   }
+// });
+
+// //profile
+// app.get("/profile", (req, res) => {
+//   const { token } = req.cookies;
+//   jwt.verify(token, secret, {}, (err, info) => {
+//     if (err) throw err;
+//     res.json(info);
+//   });
+// });
+
+// app.post("/logout", (req, res) => {
+//   res.cookie("token", "").json("ok");
+// });
+
+// //create
+// app.post("/post", uploadMiddleware.single("file"), async (req, res) => {
+//   const { originalname, path } = req.file;
+//   const parts = originalname.split(".");
+//   const ext = parts[parts.length - 1];
+//   const newPath = path + "." + ext;
+//   fs.renameSync(path, newPath);
+
+//   const { token } = req.cookies;
+//   jwt.verify(token, secret, {}, async (err, info) => {
+//     if (err) throw err;
+//     const { title, summary, content } = req.body;
+//     const postDoc = await Post.create({
+//       title,
+//       summary,
+//       content,
+//       cover: newPath,
+//       author: info.id,
+//     });
+//     res.json(postDoc);
+//   });
+// });
+
+// //server started
+// app.listen(port, () => {
+//   console.log(`started on port number ${port}`);
+// });
+
+// //mongodb+srv://blog:blog123@cluster0.2tbi5.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
 const express = require("express");
-const app = express();
 const cors = require("cors");
 const mongoose = require("mongoose");
-const User = require("./models/UserModel");
+const User = require("./models/User");
+const Post = require("./models/Post");
 const bcrypt = require("bcryptjs");
+const app = express();
 const jwt = require("jsonwebtoken");
-const port = 4000;
-const secret = "1235w5westes6d65d6d6";
 const cookieParser = require("cookie-parser");
-
-//to use the json data
-app.use(express.json());
-
-//coockie parser
-app.use(cookieParser());
-
-//salt
+const multer = require("multer");
+const uploadMiddleware = multer({ dest: "uploads/" });
+const fs = require("fs");
+port = 4000;
 const salt = bcrypt.genSaltSync(10);
+const secret = "asdfe45we45w345wegw345werjktjwertkj";
 
-//use cors
 app.use(
   cors({
     origin: "http://localhost:5173", // Only allow requests from your frontend
     credentials: true, // Allow cookies, authentication headers
   })
 );
+app.use(express.json());
+app.use(cookieParser());
+app.use("/uploads", express.static(__dirname + "/uploads"));
 
-//mongoose connect
 mongoose.connect(
   "mongodb+srv://blog:blog123@cluster0.2tbi5.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-  //   () => {
-  //     console.log("database connected succesfully");
-  //   }
 );
 
-//test
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
   try {
-    const UserDoc = await User.create({
+    const userDoc = await User.create({
       username,
       password: bcrypt.hashSync(password, salt),
     });
-
-    res.json(UserDoc);
+    res.json(userDoc);
   } catch (e) {
+    console.log(e);
     res.status(400).json(e);
   }
 });
 
-//login
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
   const userDoc = await User.findOne({ username });
@@ -68,7 +174,6 @@ app.post("/login", async (req, res) => {
   }
 });
 
-//profile
 app.get("/profile", (req, res) => {
   const { token } = req.cookies;
   jwt.verify(token, secret, {}, (err, info) => {
@@ -81,9 +186,73 @@ app.post("/logout", (req, res) => {
   res.cookie("token", "").json("ok");
 });
 
-//server started
+app.post("/post", uploadMiddleware.single("file"), async (req, res) => {
+  const { originalname, path } = req.file;
+  const parts = originalname.split(".");
+  const ext = parts[parts.length - 1];
+  const newPath = path + "." + ext;
+  fs.renameSync(path, newPath);
+
+  const { token } = req.cookies;
+  jwt.verify(token, secret, {}, async (err, info) => {
+    if (err) throw err;
+    const { title, summary, content } = req.body;
+    const postDoc = await Post.create({
+      title,
+      summary,
+      content,
+      cover: newPath,
+      author: info.id,
+    });
+    res.json(postDoc);
+  });
+});
+
+app.put("/post", uploadMiddleware.single("file"), async (req, res) => {
+  let newPath = null;
+  if (req.file) {
+    const { originalname, path } = req.file;
+    const parts = originalname.split(".");
+    const ext = parts[parts.length - 1];
+    newPath = path + "." + ext;
+    fs.renameSync(path, newPath);
+  }
+
+  const { token } = req.cookies;
+  jwt.verify(token, secret, {}, async (err, info) => {
+    if (err) throw err;
+    const { id, title, summary, content } = req.body;
+    const postDoc = await Post.findById(id);
+    const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
+    if (!isAuthor) {
+      return res.status(400).json("you are not the author");
+    }
+    await postDoc.update({
+      title,
+      summary,
+      content,
+      cover: newPath ? newPath : postDoc.cover,
+    });
+
+    res.json(postDoc);
+  });
+});
+
+app.get("/post", async (req, res) => {
+  res.json(
+    await Post.find()
+      .populate("author", ["username"])
+      .sort({ createdAt: -1 })
+      .limit(20)
+  );
+});
+
+app.get("/post/:id", async (req, res) => {
+  const { id } = req.params;
+  const postDoc = await Post.findById(id).populate("author", ["username"]);
+  res.json(postDoc);
+});
+
 app.listen(port, () => {
   console.log(`started on port number ${port}`);
 });
-
-//mongodb+srv://blog:blog123@cluster0.2tbi5.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
